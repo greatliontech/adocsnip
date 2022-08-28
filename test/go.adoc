@@ -1,0 +1,19 @@
+= go
+
+== if error not nil
+
+if err not nil, most used check
+
+[source,go,prefix=iferr]
+----
+if err != nil {
+	$0
+}
+----
+
+== map with string key
+
+[source,go,prefix=maps]
+----
+map[string]${1:valueType}
+----

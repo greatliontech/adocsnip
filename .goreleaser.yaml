@@ -1,0 +1,100 @@
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+release:
+  prerelease: auto
+  # What to do with the release notes in case there the release already exists.
+  #
+  # Valid options are:
+  # - `keep-existing`: keep the existing notes
+  # - `append`: append the current release notes to the existing notes
+  # - `prepend`: prepend the current release notes to the existing notes
+  # - `replace`: replace existing notes
+  #
+  # Default is `keep-existing`.
+  mode: append
+nfpms:
+  -
+    id: forfury
+    package_name: adocsnip
+    vendor: Great Lion Technologies
+    homepage: https://github.com/greatliontech/adocsnip
+    maintainer: 'Nikolas Sepos <nikolas@greatlion.tech>'
+    description: |-
+      manage vscode-style snippets in asciidoc
+    license: MIT
+    formats:
+      - apk
+      - deb
+      - rpm
+    release: 1
+    section: default
+    priority: extra
+    rpm:
+      group: Unspecified
+brews:
+  -
+    name: adocsnip
+    tap:
+      owner: greatliontech
+      name: homebrew-tap
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    download_strategy: CurlDownloadStrategy
+    commit_author:
+      name: greatbot
+      email: bot@greatlion.tech
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: "https://github.com/greatliontech/adocsnip"
+    description: "manage vscode-style snippets in asciidoc"
+    license: "MIT"
+    install: |
+      bin.install "adocsnip"
+aurs:
+  -
+    name: adocsnip-bin
+    homepage: "https://github.com/greatliontech/adocsnip"
+    description: "manage vscode-style snippets in asciidoc"
+    license: "MIT"
+    private_key: '{{ .Env.AUR_SSH_KEY }}'
+    maintainers:
+      - 'Nikolas Sepos <nikolas@greatlion.tech>'
+    git_url: 'ssh://aur@aur.archlinux.org/adocsnip-bin.git'
+    provides:
+      - adocsnip
+    conflicts:
+      - adocsnip
+    package: |-
+      # bin
+      install -Dm755 "./adocsnip" "${pkgdir}/usr/bin/adocsnip"
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/adocsnip/LICENSE"
+    commit_author:
+      name: greatbot
+      email: bot@greatlion.tech
+publishers:
+  - name: fury.io
+    ids:
+      - forfury
+    dir: "{{ dir .ArtifactPath }}"
+    cmd: curl -F package=@{{ .ArtifactName }} https://{{ .Env.FURY_TOKEN }}@push.fury.io/greatliontech/

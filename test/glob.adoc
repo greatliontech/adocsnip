@@ -1,0 +1,17 @@
+= all,global
+:global:
+
+== paste quoted
+
+[prefix=pq]
+----
+"$CLIPBOARD"
+----
+
+== print to console
+
+[source,javascript,prefix=mylog,scope="javascript,typescript"]
+----
+console.log('$1')
+$2
+----

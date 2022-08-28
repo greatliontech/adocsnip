@@ -39,6 +39,7 @@ type snippetFile struct {
 }
 
 var outPath string
+var genPkg bool
 
 var cmd = &cobra.Command{
 	Use:  "adocsnip",
@@ -53,7 +54,10 @@ var cmd = &cobra.Command{
 		}
 
 		err := filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
-			if path == "package.json" {
+
+			cpath := strings.TrimPrefix(path, filepath.Clean(src))
+
+			if cpath == "/package.json" {
 				data, err := ioutil.ReadFile(path)
 				if err != nil {
 					return err
@@ -64,13 +68,17 @@ var cmd = &cobra.Command{
 			}
 			if strings.HasSuffix(d.Name(), "adoc") {
 
-				l, s, err := parseFile(path)
+				l, s, g, err := parseFile(path)
 				if err != nil {
 					return err
 				}
 
-				out := strings.TrimPrefix(path, filepath.Clean(src))
-				out = strings.TrimSuffix(out, "adoc") + "json"
+				sfx := "json"
+				if g && !genPkg {
+					sfx = "code-snippets"
+				}
+
+				out := strings.TrimSuffix(cpath, "adoc") + sfx
 				sf := snippetFile{
 					Language: l,
 					Path:     "." + out,
@@ -91,12 +99,14 @@ var cmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		data, err := json.MarshalIndent(p, "", "  ")
-		if err != nil {
-			return err
-		}
-		if err := ioutil.WriteFile(filepath.Join(outPath, "package.json"), data, 0666); err != nil {
-			return err
+		if genPkg {
+			data, err := json.MarshalIndent(p, "", "  ")
+			if err != nil {
+				return err
+			}
+			if err := ioutil.WriteFile(filepath.Join(outPath, "package.json"), data, 0666); err != nil {
+				return err
+			}
 		}
 		return nil
 	},
@@ -104,20 +114,22 @@ var cmd = &cobra.Command{
 
 func init() {
 	cmd.Flags().StringVarP(&outPath, "out", "o", "./dist", "output path")
+	cmd.Flags().BoolVarP(&genPkg, "package", "p", false, "generate package.json file")
 }
 
 func main() {
 	cmd.Execute()
 }
 
-func parseFile(path string) ([]string, map[string]*snippet, error) {
+func parseFile(path string) ([]string, map[string]*snippet, bool, error) {
 
 	langs := []string{}
 	spts := map[string]*snippet{}
+	glb := false
 
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 	defer file.Close()
 
@@ -125,25 +137,31 @@ func parseFile(path string) ([]string, map[string]*snippet, error) {
 
 	doc, err := parser.ParseDocument(file, config)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	for _, v := range doc.Elements {
 		switch e := v.(type) {
 		case *types.DocumentHeader:
 			langs = strings.Split(e.Title[0].(*types.StringElement).Content, ",")
+			for _, c := range e.Elements {
+				ad := c.(*types.AttributeDeclaration)
+				if ad.Name == "global" {
+					glb = true
+				}
+			}
 		case *types.Section:
 			snpt, err := sectionToSnipet(e)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, false, err
 			}
 			spts[snpt.Name] = snpt
 		default:
-			return nil, nil, fmt.Errorf("unexpected token in document %T\n", e)
+			return nil, nil, false, fmt.Errorf("unexpected token in document %T\n", e)
 		}
 	}
 
-	return langs, spts, nil
+	return langs, spts, glb, nil
 }
 
 func (sf snippetFile) MarshalJSON() ([]byte, error) {

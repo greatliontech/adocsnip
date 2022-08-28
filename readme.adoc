@@ -1,5 +1,200 @@
 = adocsnip
 
-manage vscode-style snippets in asciidoc.
+manage vscode-style snippets in asciidoc, because maintaining JSON arrays is a pain.
 
+== how to use
+
+assuming a source folder named `mysnippets` lets create a couple of files.
+
+.mysnippets/go.adoc
+[source,asciidoc]
+-----
+= go
+
+== if error not nil
+
+if err not nil, most used check
+
+[source,go,prefix=iferr]
+----
+if err != nil {
+	$0
+}
+----
+
+== map with string key
+
+[source,go,prefix=maps]
+----
+map[string]${1:valueType}
+----
+-----
+
+.mysnippets/glob.adoc
+[source,asciidoc]
+-----
+= all,global
+:global:
+
+== paste quoted
+
+[prefix=pq]
+----
+"$CLIPBOARD"
+----
+
+== print to console
+
+[source,javascript,prefix=mylog,scope="javascript,typescript"]
+----
+console.log('$1')
+$2
+----
+-----
+
+== normal generation mode
+
+for use in vscode
+
+[source,sh]
+----
+adocsnip ./mysnippets -o ~/.config/Code/User/snippets
+----
+
+this will convert `*.adoc` to `*.json` unless there's `:global:` defined in the header which will result to `*.code-snippets` suffix. generated example files will result to:
+
+.dist/go.json
+[source,json]
+----
+{
+  "if error not nil": {
+    "prefix": "iferr",
+    "body": [
+      "if err != nil {",
+      "\t$0",
+      "}"
+    ],
+    "description": "if err not nil, most used check"
+  },
+  "map with string key": {
+    "prefix": "maps",
+    "body": [
+      "map[string]${1:valueType}"
+    ]
+  }
+}
+----
+
+.dist/glob.code-snippets
+[source,json]
+----
+{
+  "paste quoted": {
+    "prefix": "pq",
+    "body": [
+      "\"$CLIPBOARD\""
+    ]
+  },
+  "print to console": {
+    "prefix": "mylog",
+    "body": [
+      "console.log('$1')",
+      "$2"
+    ],
+    "scope": "javascript,typescript"
+  }
+}
+----
+
+=== package generation mode
+
+for use with other tools like https://github.com/L3MON4D3/LuaSnip[luasnip] or for publishing as vscode extention.
+
+also let's create a `package.json` file in `mysnipptes` for some extra metadata.
+
+.mysnipptes/package.json
+[source,json]
+----
+{
+  "name": "my snippets",
+  "description": "Test code snippets"
+}
+----
+
+[source,sh]
+----
+adocsnip ./mysnippets -o ~/.config/nvim/snippets -p
+----
+
+in this mode the header title of the document becomes a comma-separted list of scopes, defined in `package.json` and the `:global:` attribute is ignored resulting in 1:1 generation `.adoc -> .json`.
+
+.dist/package.json
+[source,json]
+----
+{
+  "name": "my snippets",
+  "description": "Test code snippets",
+  "contributes": {
+    "snippets": [
+      {
+        "language": [
+          "all",
+          "global"
+        ],
+        "path": "./glob.json"
+      },
+      {
+        "language": "go",
+        "path": "./go.json"
+      }
+    ]
+  }
+}
+----
+
+=== benefits
+
+* no JSON file editing. asciidoc source block.
+* some code highlighting when creating/editing snippets
+* for-free visual reference by virtue of asciidoc. check https://github.com/greatliontech/adocsnip/blob/main/test/go.adoc[go.adoc], https://github.com/greatliontech/adocsnip/blob/main/test/glob.adoc[glob.adoc]
+
+== installation
+
+=== arch
+
+[source,sh]
+----
+yay -S adocsnip-bin
+----
+
+=== mac/linux
+
+[source,sh]
+----
+brew tap greatliontech/tap
+brew install adocsnip
+----
+
+=== debian/ubuntu
+
+[source,sh]
+----
+echo "deb [trusted=yes] https://apt.fury.io/greatliontech/ /" >/etc/apt/sources.list.d/greatliontech.list
+apt update
+apt install adocsnip
+----
+
+=== fedora/centos
+
+[source,sh]
+----
+cat >/etc/yum.repos.d/greatliontech.repo <<EOF
+[greatliontech]
+name=great lion tech repo
+baseurl=https://yum.fury.io/greatliontech/
+enabled=1
+gpgcheck=0
+EOF
+yum install adocsnip
+----
 
